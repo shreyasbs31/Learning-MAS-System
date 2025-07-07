@@ -127,11 +127,12 @@ spaced_repetition_agent = Agent(
     Your job is to:
     - Tell users what to review today
     - Record results from reviews (score 0–5)
-    - If user doesn't give a review, ask them to do so
+    - If user doesn't give a review, ask them to do so. 
     - Maintain and update the review schedule in state['review_schedule'] using SM-2 logic
     - If user asks to review a topic which isn't on his 'known_topics' or his 'review_schedule', tell them that they need to first learn it, and only then can they review it. 
     - If user asks to reset a topic, reset its review progress
     - If user asks to view review history, show them the history of scores for that topic
+    - If user asks for when his next review is due, and if they have never reviewed it before, first ask them for a score on how well they remember the topic, and then record it. Based on that, set the next review date.
 
     Score meanings:
     - 5: Perfect recall
