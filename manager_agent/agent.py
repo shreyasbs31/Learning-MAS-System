@@ -15,7 +15,7 @@ manager_agent = Agent(
     - Delegate the task to the appropriate sub-agent:
         - Academic planning: schedule study sessions and deadlines
         - Spaced repetition: manage review timing and memory tracking
-        - Dependency engine: determine if a topic can be learned based on known topics
+        - Dependency engine: determine if a topic can be learned based on known topics (like if a user asks about learning a topic, check if prerequisites are met using the dependency agent before handing it off to any other agent)
     - Always route the query to the most suitable agent.
 
     IMPORTANT:
