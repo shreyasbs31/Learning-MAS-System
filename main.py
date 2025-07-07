@@ -1,80 +1,72 @@
-import asyncio
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
+import asyncio
 from dotenv import load_dotenv
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService
-from manager_agent.agent import root_agent
-from utils import call_agent_async
+from manager_agent.agent import manager_agent
+from utils import call_agent_async, display_state, add_user_query_to_history
 
 load_dotenv()
 
-# ===== PART 1: Initialize Persistent Session Service =====
-# Using SQLite database for persistent storage
-db_url = "sqlite:///./mas_agent_state.db"
+# Initialize SQLite-based persistent session service
+db_url = "sqlite:///./learning_mas.db"
 session_service = DatabaseSessionService(db_url=db_url)
 
+APP_NAME = "LearningMAS"
+USER_ID = "shreyas"
 
-# ===== PART 2: Define Initial State =====
-# This will only be used when creating a new session
+# Default state structure
 initial_state = {
     "user_name": "Shreyas",
-    "known topics": [],
-    "review_log": {},
-    "goals": [],
+    "known_topics": [],
+    "learning_tasks": [],
+    "review_schedule": [],
+    "interaction_history": [],
+    "study_progress": [],
 }
 
-
 async def main_async():
-    # Setup constants
-    APP_NAME = "Learning Agent"
-    USER_ID = "shreyas"
-
-    # ===== PART 3: Session Management - Find or Create =====
-    # Check for existing sessions for this user
-    existing_sessions = session_service.list_sessions(
-        app_name=APP_NAME,
-        user_id=USER_ID,
-    )
-
-    # If there's an existing session, use it, otherwise create a new one
-    if existing_sessions and len(existing_sessions.sessions) > 0:
-        # Use the most recent session
+    # Check existing sessions
+    existing_sessions = session_service.list_sessions(app_name=APP_NAME, user_id=USER_ID)
+    if existing_sessions.sessions:
         SESSION_ID = existing_sessions.sessions[0].id
-        print(f"Continuing existing session: {SESSION_ID}")
+        print(f"Continuing session: {SESSION_ID}")
     else:
-        # Create a new session with initial state
-        new_session = session_service.create_session(
-            app_name=APP_NAME,
-            user_id=USER_ID,
-            state=initial_state,
+        session = session_service.create_session(
+            app_name=APP_NAME, user_id=USER_ID, state=initial_state
         )
-        SESSION_ID = new_session.id
-        print(f"Created new session: {SESSION_ID}")
+        SESSION_ID = session.id
+        print(f"New session created: {SESSION_ID}")
 
-    # ===== PART 4: Agent Runner Setup =====
-    # Create a runner with the memory agent
     runner = Runner(
-        agent=root_agent,
+        agent=manager_agent,
         app_name=APP_NAME,
-        session_service=session_service,
+        session_service=session_service
     )
 
-    # ===== PART 5: Interactive Conversation Loop =====
-    print("\nWelcome to Learning Agent Chat!")
-    print("Type 'exit' or 'quit' to end the conversation.\n")
+    print("\nWelcome to your Personalized Learning Agent!")
+    print("Type 'exit' or 'quit' to stop.\n")
 
     while True:
-        # Get user input
         user_input = input("You: ")
-
-        # Check if user wants to exit
         if user_input.lower() in ["exit", "quit"]:
-            print("Ending conversation. Your data has been saved to the database.")
+            print("Goodbye!")
             break
 
-        # Process the user query through the agent
+        # Track the user's query in interaction history
+        add_user_query_to_history(session_service, APP_NAME, USER_ID, SESSION_ID, user_input)
+
+        # Route the query to the agent
         await call_agent_async(runner, USER_ID, SESSION_ID, user_input)
 
+        # Show updated session state
+        display_state(session_service, APP_NAME, USER_ID, SESSION_ID)
+
+def main():
+    asyncio.run(main_async())
 
 if __name__ == "__main__":
-    asyncio.run(main_async())
+    main()
