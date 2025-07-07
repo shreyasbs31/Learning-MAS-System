@@ -2,12 +2,21 @@ from datetime import datetime, timedelta
 from google.adk.agents import Agent
 from google.adk.tools.tool_context import ToolContext
 
+# This function checks if a topic is either in the known topics list or scheduled for review.
+def is_known_or_scheduled(topic: str, state: dict) -> bool:
+    known = state.get("known_topics", [])
+    scheduled = [t["topic"] for t in state.get("review_schedule", [])]
+    return topic in known or topic in scheduled
+
 # === Tool 1: Record a review result and apply SM-2 logic ===
 def record_review_result(topic: str, score: int, tool_context: ToolContext) -> dict:
     """
     Record a spaced repetition result using SM-2 algorithm.
     score: integer between 0–5 (5 = perfect recall, 0 = complete blackout)
     """
+    if not is_known_or_scheduled(topic, tool_context.state):
+        return {"message": f"⚠️ You need to learn '{topic}' first before reviewing it."}
+
     schedule = tool_context.state.get("review_schedule", [])
     today = datetime.now().date()
     topic_entry = next((t for t in schedule if t["topic"] == topic), None)
@@ -56,11 +65,26 @@ def record_review_result(topic: str, score: int, tool_context: ToolContext) -> d
 def get_due_reviews(tool_context: ToolContext) -> dict:
     today = datetime.now().date()
     schedule = tool_context.state.get("review_schedule", [])
-    due = [t["topic"] for t in schedule if datetime.strptime(t["next_review_due"], "%Y-%m-%d").date() <= today]
+    due = []
+    for t in schedule:
+        try:
+            due_date = datetime.strptime(t["next_review_due"], "%Y-%m-%d").date()
+            if due_date <= today:
+                due.append(t["topic"])
+        except (KeyError, ValueError):
+            # Ignore or log broken/missing date entries
+            continue
+        
+    if not due:
+        return {"message": "✅ You're all caught up! No topics are due for review today."}
+    
     return {"due_topics": due}
 
 # === Tool 3: View review history for a topic ===
 def view_review_history(topic: str, tool_context: ToolContext) -> dict:
+    if not is_known_or_scheduled(topic, tool_context.state):
+        return {"message": f"⚠️ You need to learn '{topic}' first before reviewing it."}
+
     schedule = tool_context.state.get("review_schedule", [])
     topic_entry = next((t for t in schedule if t["topic"] == topic), None)
     if topic_entry:
@@ -69,6 +93,9 @@ def view_review_history(topic: str, tool_context: ToolContext) -> dict:
 
 # === Tool 4: Reset spaced repetition progress for a topic ===
 def reset_schedule(topic: str, tool_context: ToolContext) -> dict:
+    if not is_known_or_scheduled(topic, tool_context.state):
+        return {"message": f"⚠️ You need to learn '{topic}' first before reviewing it."}
+
     schedule = tool_context.state.get("review_schedule", [])
     for entry in schedule:
         if entry["topic"] == topic:
@@ -86,6 +113,8 @@ def reset_schedule(topic: str, tool_context: ToolContext) -> dict:
 # === Tool 5: List all topics in the review schedule ===
 def list_reviewed_topics(tool_context: ToolContext) -> dict:
     schedule = tool_context.state.get("review_schedule", [])
+    if not schedule:
+        return {"message": "You have no topics in your review schedule yet."}
     return {"topics": [t["topic"] for t in schedule]}
 
 # === Create the Spaced Repetition Agent ===

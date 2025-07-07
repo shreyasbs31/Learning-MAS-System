@@ -32,14 +32,17 @@ async def main_async():
     # Check existing sessions
     existing_sessions = session_service.list_sessions(app_name=APP_NAME, user_id=USER_ID)
     if existing_sessions.sessions:
-        SESSION_ID = existing_sessions.sessions[0].id
-        print(f"Continuing session: {SESSION_ID}")
+        session = existing_sessions.sessions[0]
+        print(f"Continuing session: {session.id}")
     else:
         session = session_service.create_session(
-            app_name=APP_NAME, user_id=USER_ID, state=initial_state
+            app_name=APP_NAME, 
+            user_id=USER_ID, 
+            state=initial_state
         )
-        SESSION_ID = session.id
-        print(f"New session created: {SESSION_ID}")
+        print(f"New session created: {session.id}")
+
+    SESSION_ID = session.id
 
     runner = Runner(
         agent=manager_agent,
@@ -47,7 +50,7 @@ async def main_async():
         session_service=session_service
     )
 
-    print("\nWelcome to your Personalized Learning Agent!")
+    print(f"\nWelcome to your Personalized Learning Agent {USER_ID.title()}!")
     print("Type 'exit' or 'quit' to stop.\n")
 
     while True:
@@ -56,8 +59,6 @@ async def main_async():
             print("Goodbye!")
             break
 
-        # Track the user's query in interaction history
-        add_user_query_to_history(session_service, APP_NAME, USER_ID, SESSION_ID, user_input)
 
         # Route the query to the agent
         await call_agent_async(runner, USER_ID, SESSION_ID, user_input)

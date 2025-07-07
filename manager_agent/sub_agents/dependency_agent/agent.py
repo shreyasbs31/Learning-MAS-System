@@ -70,13 +70,22 @@ def suggest_next_topics(tool_context: ToolContext) -> dict:
 async def auto_update_prereqs(topic: str, tool_context: ToolContext) -> dict:
     try:
         guesses = await search_for_prereqs(topic, tool_context)
+        valid_guesses = [g for g in guesses if not g.startswith("Error")]
+
         prereqs = tool_context.state.get("prereq_map", {})
-        prereqs.setdefault(topic, [])
-        for guess in guesses:
-            if guess not in prereqs[topic]:
-                prereqs[topic].append(guess)
-        tool_context.state["prereq_map"] = prereqs
-        return {"message": f"Inferred prerequisites for '{topic}':", "suggested": prereqs[topic]}
+
+        if valid_guesses:
+            prereqs.setdefault(topic, [])
+            for guess in valid_guesses:
+                if guess not in prereqs[topic]:
+                    prereqs[topic].append(guess)
+            tool_context.state["prereq_map"] = prereqs
+            return {
+                "message": f"Inferred prerequisites for '{topic}':\n" + "\n".join(f"- {g}" for g in valid_guesses),
+                "suggested": valid_guesses
+        }
+        else:
+            return {"message": f"No valid prerequisites found for '{topic}'."}
     except Exception as e:
         return {"message": f"Search failed. Please manually add prerequisites for '{topic}'. Error: {e}"}
 

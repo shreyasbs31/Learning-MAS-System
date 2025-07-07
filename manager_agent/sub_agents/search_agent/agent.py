@@ -27,7 +27,13 @@ def get_search_tool():
 async def search_for_prereqs(topic: str, tool_context) -> list[str]:
     try:
         result = await tool_context.call_tool(search_tool, input=f"What are the prerequisites to learn {topic}?")
-        return [result] if isinstance(result, str) else result
+        text = result.get("text") or result.get("results") or result.get("summary") or ""
+        
+        # Optional: attempt to split into list (naive fallback)
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        guesses = [line for line in lines if "prerequisite" in line.lower() or "-" in line or "•" in line]
+
+        return guesses if guesses else [text[:300] + "..." if len(text) > 300 else text]
     except Exception as e:
         return [f"Error searching: {e}"]
     

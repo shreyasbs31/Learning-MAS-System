@@ -21,6 +21,11 @@ manager_agent = Agent(
     IMPORTANT:
     - Use the session state (`known_topics`, `learning_tasks`, `review_schedule`) to inform decisions.
     - You can summarize or reflect, but deeper logic should be done by the delegated sub-agent.
+    
+    - If the user mentions study progress like "I finished Graphs 60%" or "I completed 100% of Recursion", call the `update_study_progress` tool from academic_planning_agent.
+    - Extract the topic name and percent value from the user's input.
+    - Set 'completed' = True if percent is 100, otherwise False.
+    - Always pass all three values: topic, percent, completed. 
 
     Example Routing:
     - "What should I revise today?" → spaced_repetition_agent
