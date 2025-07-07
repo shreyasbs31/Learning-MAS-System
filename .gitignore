@@ -2,3 +2,11 @@
 __pycache__/
 .venv/
 *.db
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+.idea/
+.vscode/
+.DS_Store
